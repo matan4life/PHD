@@ -1,0 +1,78 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.egg-info/
+dist/
+build/
+*.egg
+.env
+venv/
+.venv/
+env/
+*.whl
+pip-log.txt
+Pipfile.lock
+.pytest_cache/
+coverage.xml
+.coverage
+*.cover
+*.cache
+*.tox/
+*.nox/
+*.hypothesis/
+*.ipynb_checkpoints/
+
+# PyCharm
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# .NET
+bin/
+obj/
+*.csproj.user
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.nupkg
+packages/
+*.snk
+*.msi
+*.msix
+*.appx
+*.appxsym
+*.appxupload
+TestResults/
+*.trx
+*.vs/
+*.csproj.DotSettings
+*.DotSettings.user
+
+# Rider
+.idea/
+*.sln.iml
+*.DotSettings
+.rider/
+*.idea/
+
+# Common IDE/Editor
+.vscode/
+*.code-workspace
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# AWS CDK
+cdk.out/
+*.generated.cs
+*.generated.js
+*.generated.json
+cdk.context.json
+node_modules/
+*.tfstate
+*.tfstate.backup
