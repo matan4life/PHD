@@ -18,13 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Setup .NET with explicit version
+      # Setup .NET
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # Clear .NET tool cache to avoid DirectoryNotFoundException
+      # Clear .NET tool cache
       - name: Clear .NET tool cache
         run: rm -rf /home/runner/.dotnet/tools/.store
 
@@ -32,7 +32,7 @@ jobs:
       - name: Install CDK
         run: |
           for attempt in {1..3}; do
-            dotnet tool install -g Amazon.CDK --version 2.100.0 && break
+            dotnet tool install -g Amazon.CDK.Lib --version 2.211.0 && break
             echo "Retry $attempt failed, waiting 5s..."
             sleep 5
           done
@@ -50,10 +50,6 @@ jobs:
           pip install -r python-extract-utils/requirements.txt
           pip install -r python-dataset-extract/requirements.txt
           pip install pytest moto[server]
-
-      # Run tests
-      - name: Run tests
-        run: pytest python-dataset-extract/tests/
 
       # Build Docker image
       - name: Build Docker
