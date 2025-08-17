@@ -32,10 +32,6 @@ jobs:
       - name: Install AWS CDK CLI
         run: npm install -g aws-cdk
 
-      # Build Docker image
-      - name: Build Docker
-        run: docker build -t dataset-extract -f python-dataset-extract/Dockerfile .
-
       # Configure AWS credentials via OIDC
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -47,7 +43,7 @@ jobs:
         run: |
           cd cdk
           cdk bootstrap
-          
+
       # CDK Deploy
       - name: CDK Deploy
         run: cd cdk && cdk deploy --all --require-approval never

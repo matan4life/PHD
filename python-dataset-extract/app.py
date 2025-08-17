@@ -5,9 +5,9 @@ import numpy as np
 import logging
 import time
 from fs_utils import read_file_as_opencv
-from utils.extract_steps import crop_image, create_enhanced_version
-from utils.cv_filter_utils import get_image_skeletons, calculate_minutiae
-from utils.dynamo_utils import save_minutiae_to_dynamo
+from extract_steps import crop_image, create_enhanced_version
+from cv_filter_utils import get_image_skeletons, calculate_minutiae
+from dynamo_utils import save_minutiae_to_dynamo
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
