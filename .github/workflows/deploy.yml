@@ -39,11 +39,10 @@ jobs:
           role-to-assume: arn:aws:iam::987277324222:role/github-actions-workflow-runner 
           aws-region: eu-central-1
 
-      - name: Bootstrap CDK
-        run: |
-          cd cdk
-          cdk bootstrap
-
       # CDK Deploy
       - name: CDK Deploy
         run: cd cdk && cdk deploy --all --require-approval never
+
+      # CDK Destroy
+      - name: CDK Deploy
+        run: cd cdk && cdk destroy --all
