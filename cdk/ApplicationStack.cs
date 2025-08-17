@@ -19,7 +19,7 @@ class ApplicationStack : Stack
         // Extract Lambda
         var extractLambda = new DockerImageFunction(this, "DatasetExtract", new DockerImageFunctionProps
         {
-            Code = DockerImageCode.FromImageAsset("./python-dataset-extract", new AssetImageCodeProps { File = "Dockerfile" }),
+            Code = DockerImageCode.FromImageAsset("../python-dataset-extract", new AssetImageCodeProps { File = "Dockerfile" }),
             MemorySize = 1024,
             Timeout = Duration.Minutes(5),
             Role = Roles.CreateRole(this, props),
