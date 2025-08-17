@@ -26,7 +26,7 @@ jobs:
 
       # Build Docker image
       - name: Build Docker
-        run: docker build -t dataset-extract -f python-dataset-extract/Dockerfile
+        run: docker build -t dataset-extract -f python-dataset-extract/Dockerfile .
 
       # Configure AWS credentials via OIDC
       - name: Configure AWS Credentials
