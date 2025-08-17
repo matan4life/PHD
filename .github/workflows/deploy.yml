@@ -24,6 +24,14 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
       # Build Docker image
       - name: Build Docker
         run: docker build -t dataset-extract -f python-dataset-extract/Dockerfile .
@@ -35,10 +43,6 @@ jobs:
           role-to-assume: arn:aws:iam::987277324222:role/github-actions-workflow-runner 
           aws-region: eu-central-1
 
-      # CDK Synth
-      - name: CDK Synth
-        run: cdk synth --app "dotnet run --project cdk/Cdk.csproj"
-
       # CDK Deploy
       - name: CDK Deploy
-        run: cdk deploy --all --require-approval never
+        run: cd cdk && cdk deploy --all --require-approval never
