@@ -1,0 +1,82 @@
+import json
+import os
+import boto3
+import numpy as np
+import logging
+import time
+from fs_utils import read_file_as_opencv
+from utils.extract_steps import crop_image, create_enhanced_version
+from utils.cv_filter_utils import get_image_skeletons, calculate_minutiae
+from utils.dynamo_utils import save_minutiae_to_dynamo
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+s3_client = boto3.client('s3')
+
+
+def handler(event, context):
+    """Lambda handler for minutiae extraction from dataset S3 events.
+
+    Reuse: TABLE_NAME env for dataset/query, TTL_SECONDS for query.
+    Optimizations: Batch processing, compressed binary, numba in utils.
+    Logging: Structured logs to CloudWatch with timings and request ID.
+
+    Args:
+        event: S3 event {'Records': [{'s3': {'bucket': {'name': str}, 'object': {'key': str}}}]}
+        context: Lambda context
+
+    Returns:
+        JSON with per-image results
+    """
+    table_name = os.environ['TABLE_NAME']
+    ttl_seconds = int(os.environ.get('TTL_SECONDS', 0))
+    request_id = context.aws_request_id
+
+    logger.info(f"Starting handler for request_id={request_id}, records={len(event.get('Records', []))}")
+
+    results = []
+    for record in event.get('Records', []):
+        try:
+            bucket = record['s3']['bucket']['name']
+            key = record['s3']['object']['key']
+            logger.info(f"Processing image={key}, request_id={request_id}")
+
+            start_time = time.time()
+            img = read_file_as_opencv(bucket, key)
+            logger.info(f"Read image in {time.time() - start_time:.3f}s")
+
+            start_time = time.time()
+            crop, row, column, row_offset, column_offset = crop_image(img)
+            logger.info(f"Crop image in {time.time() - start_time:.3f}s")
+
+            start_time = time.time()
+            enhanced, mask = create_enhanced_version(crop)
+            logger.info(f"Enhance image in {time.time() - start_time:.3f}s")
+
+            start_time = time.time()
+            skeleton, binary_skeleton = get_image_skeletons(enhanced)
+            logger.info(f"Generate skeletons in {time.time() - start_time:.3f}s")
+
+            start_time = time.time()
+            minutiae = calculate_minutiae(mask, skeleton, binary_skeleton)
+            logger.info(f"Calculate minutiae in {time.time() - start_time:.3f}s, count={len(minutiae)}")
+
+            minutiae_array = np.array([(x + column, y + row, 1 if term else 0, theta)
+                                       for x, y, term, theta in minutiae], dtype=np.float32)
+            metadata = {'width_shift': column, 'height_shift': row,
+                        'offset_row': row_offset, 'offset_col': column_offset}
+
+            start_time = time.time()
+            save_minutiae_to_dynamo(table_name, key, minutiae_array, metadata,
+                                    ttl_seconds if ttl_seconds > 0 else None)
+            logger.info(f"Saved to DynamoDB in {time.time() - start_time:.3f}s")
+
+            results.append({'image': key, 'status': 'success', 'count': len(minutiae)})
+        except Exception as e:
+            logger.error(f"Error processing {key}, request_id={request_id}: {str(e)}")
+            results.append({'image': key, 'status': 'error', 'message': str(e)})
+
+    logger.info(f"Completed handler for request_id={request_id}, results={len(results)}")
+    return {'statusCode': 200, 'body': json.dumps(results)}

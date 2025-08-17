@@ -1,0 +1,58 @@
+name: Deploy Dataset Extract
+on:
+  push:
+    branches:
+        - main
+        - article/15.08 
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # For OIDC
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Install CDK
+        run: dotnet tool install -g Amazon.CDK
+
+      # Setup Python
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # Install dependencies
+      - name: Install Python deps
+        run: |
+          pip install -r python-extract-utils/requirements.txt
+          pip install -r python-dataset-extract/requirements.txt
+          pip install pytest moto[server]
+
+      # Run tests
+      - name: Run tests
+        run: pytest python-dataset-extract/tests/
+
+      # Build Docker image
+      - name: Build Docker
+        run: docker build -t dataset-extract ./python-dataset-extract
+
+      # Configure AWS credentials via OIDC
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::987277324222:role/github-actions-workflow-runner
+          aws-region: eu-central-1
+
+      # CDK Deploy
+      - name: CDK Deploy
+        run: cdk deploy --all --require-approval never
