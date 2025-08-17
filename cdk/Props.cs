@@ -2,8 +2,8 @@
 
 class Props
 {
-    public string DatasetBucketName = "dataset-bucket";
-    public string DatasetMinutiaeDynamoTableName = "dataset-minutiae-table";
+    public string DatasetBucketName = "app-dataset-bucket";
+    public string DatasetMinutiaeDynamoTableName = "app-dataset-minutiae-table";
     public string ApplicationStackName = "application-stack";
-    public string ExtractLambdaRoleName = "extract-lambda-role";
+    public string ExtractLambdaRoleName = "app-extract-lambda-role";
 }
