@@ -2,28 +2,41 @@ name: Deploy Dataset Extract
 on:
   push:
     branches:
-        - main
-        - article/15.08 
+      - main
+      - article/15.08  # Your branch
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - article/15.08
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write  # For OIDC
+      id-token: write
       contents: read
     steps:
       - uses: actions/checkout@v4
 
-      # Setup .NET
+      # Setup .NET with explicit version
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
+      # Clear .NET tool cache to avoid DirectoryNotFoundException
+      - name: Clear .NET tool cache
+        run: rm -rf /home/runner/.dotnet/tools/.store
+
+      # Install Amazon.CDK with retry
       - name: Install CDK
-        run: dotnet tool install -g Amazon.CDK
+        run: |
+          for attempt in {1..3}; do
+            dotnet tool install -g Amazon.CDK --version 2.100.0 && break
+            echo "Retry $attempt failed, waiting 5s..."
+            sleep 5
+          done
+        continue-on-error: false
 
       # Setup Python
       - name: Setup Python
@@ -31,7 +44,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Install dependencies
+      # Install Python dependencies
       - name: Install Python deps
         run: |
           pip install -r python-extract-utils/requirements.txt
@@ -50,9 +63,17 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::987277324222:role/github-actions-workflow-runner
-          aws-region: eu-central-1
+          role-to-assume: arn:aws:iam::YOUR_ACCOUNT_ID:role/GitHubActionsRole
+          aws-region: us-east-1
+
+      # CDK Synth
+      - name: CDK Synth
+        run: cdk synth --app "dotnet run --project cdk/src/FingerprintCdk.csproj"
 
       # CDK Deploy
       - name: CDK Deploy
         run: cdk deploy --all --require-approval never
+
+      # Log Deploy Success
+      - name: Log Deploy Success
+        run: echo "Deployed to AWS, check CloudWatch Logs at /aws/lambda/DatasetExtract"
