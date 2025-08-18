@@ -23,16 +23,10 @@ def save_minutiae_to_dynamo(table_name: str, image_id: str, array: np.ndarray, m
     np.savez_compressed(buffer, data=array)
     buffer.seek(0)
     
-    # Convert float/int to Decimal for DynamoDB
-    converted_metadata = {
-        k: Decimal(str(v)) if isinstance(v, (int, float)) else v
-        for k, v in metadata.items()
-    }
-    
     item = {
         'ImageId': image_id,
         'MinutiaeBinary': buffer.getvalue(),
-        'Metadata': converted_metadata,
+        'Metadata': metadata,
         'Timestamp': int(time.time())
     }
 
