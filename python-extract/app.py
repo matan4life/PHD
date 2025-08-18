@@ -74,8 +74,8 @@ def handler(event, context):
                 'height_shift': int(row),
                 'offset_row': int(row_offset),
                 'offset_col': int(column_offset),
-                'center_x': float(center_x),  # Save centroid
-                'center_y': float(center_y)
+                'center_x': center_x,  # Save centroid
+                'center_y': center_y
             }
 
             start_time = time.time()

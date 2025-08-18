@@ -36,4 +36,4 @@ def get_centroid(minutiae):
     
     points = np.array([(x, y) for x, y, _, _ in minutiae])
     center_x, center_y = np.mean(points, axis=0)
-    return float(center_x), float(center_y)
+    return int(center_x), int(center_y)
