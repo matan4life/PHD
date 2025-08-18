@@ -21,7 +21,7 @@ class ApplicationStack : Stack
         {
             Code = DockerImageCode.FromImageAsset("../python-dataset-extract", new AssetImageCodeProps { File = "Dockerfile" }),
             MemorySize = 1024,
-            Timeout = Duration.Minutes(5),
+            Timeout = Duration.Minutes(15),
             Role = Roles.CreateRole(this, props),
             LogGroup = new LogGroup(this, "DatasetExtractLogGroup", new LogGroupProps
             {

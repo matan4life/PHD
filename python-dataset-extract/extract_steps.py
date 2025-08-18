@@ -1,5 +1,4 @@
 import numpy as np
-from numba import jit
 from cv_filter_utils import calculate_image_sobel_gradients, create_binary_mask, get_local_ridge_orientations, \
     get_local_ridge_frequency, get_enhanced_image, get_crop_indices
 
