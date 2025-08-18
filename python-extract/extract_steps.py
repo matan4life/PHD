@@ -17,3 +17,23 @@ def create_enhanced_version(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     ro = get_local_ridge_orientations(gx2, gy2, gxy)
     rf = get_local_ridge_frequency(image)
     return get_enhanced_image(image, mask, ro, rf), mask
+
+def get_centroid(minutiae: List[Tuple[int, int, bool, float]]) -> Tuple[float, float]:
+    """Calculate the center of mass (centroid) for minutiae points.
+    
+    Reuse: For dataset or query images to define center for comparison.
+    Optimizations: Uses NumPy for vectorized calculation.
+    Publication: Based on .NET GetSquares for consistent minutiae alignment.
+    
+    Args:
+        minutiae: List of (x, y, is_termination, theta).
+    
+    Returns:
+        (center_x, center_y).
+    """
+    if not minutiae:
+        return 0.0, 0.0
+    
+    points = np.array([(x, y) for x, y, _, _ in minutiae])
+    center_x, center_y = np.mean(points, axis=0)
+    return float(center_x), float(center_y)

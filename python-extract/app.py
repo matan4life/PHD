@@ -5,7 +5,7 @@ import numpy as np
 import logging
 import time
 from fs_utils import read_file_as_opencv
-from extract_steps import crop_image, create_enhanced_version
+from extract_steps import crop_image, create_enhanced_version, get_centroid
 from cv_filter_utils import get_image_skeletons, calculate_minutiae
 from dynamo_utils import save_minutiae_to_dynamo
 
@@ -63,6 +63,9 @@ def handler(event, context):
             minutiae = calculate_minutiae(mask, skeleton, binary_skeleton)
             logger.info(f"Calculate minutiae in {time.time() - start_time:.3f}s, count={len(minutiae)}")
 
+            center_x, center_y = get_centroid(minutiae)
+            logger.info(f"Centroid: center_x={center_x}, center_y={center_y}")
+
             minutiae_array = np.array([(x + column, y + row, 1 if term else 0, theta)
                                        for x, y, term, theta in minutiae], dtype=np.float32)
 
@@ -70,7 +73,9 @@ def handler(event, context):
                 'width_shift': int(column),  # Convert numpy.int64 to int
                 'height_shift': int(row),
                 'offset_row': int(row_offset),
-                'offset_col': int(column_offset)
+                'offset_col': int(column_offset),
+                'center_x': float(center_x),  # Save centroid
+                'center_y': float(center_y)
             }
 
             start_time = time.time()

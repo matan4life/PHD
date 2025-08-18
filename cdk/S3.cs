@@ -14,4 +14,13 @@ class S3
             BucketName = props.DatasetBucketName
         });
     }
+
+    internal static Bucket CreateInputBucket(Construct scope, Props props)
+    {
+        return new Bucket(scope, props.InputBucketName, new BucketProps
+        {
+            RemovalPolicy = RemovalPolicy.DESTROY,
+            BucketName = props.InputBucketName
+        });
+    }
 }
