@@ -18,13 +18,14 @@ class ApplicationStack : Stack
         var datasetTable = DynamoDb.CreateDatasetMinutiaeTable(this, props);
         var inputTable = DynamoDb.CreateInputMinutiaeTable(this, props);
 
+        var role = Roles.CreateRole(this, props);
         // Extract Lambda
         var extractLambda = new DockerImageFunction(this, "DatasetExtract", new DockerImageFunctionProps
         {
             Code = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" }),
             MemorySize = 1024,
             Timeout = Duration.Minutes(15),
-            Role = Roles.CreateRole(this, props),
+            Role = role,
             LogGroup = new LogGroup(this, "DatasetExtractLogGroup", new LogGroupProps
             {
                 LogGroupName = "/aws/lambda/dataset-extract",
@@ -41,7 +42,7 @@ class ApplicationStack : Stack
             Code = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" }),
             MemorySize = 1024,
             Timeout = Duration.Minutes(15),
-            Role = Roles.CreateRole(this, props),
+            Role = role,
             LogGroup = new LogGroup(this, "InputExtractLogGroup", new LogGroupProps
             {
                 LogGroupName = "/aws/lambda/input-extract",
