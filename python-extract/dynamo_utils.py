@@ -6,6 +6,7 @@ from typing import Dict, Optional
 
 dynamodb = boto3.resource('dynamodb')
 
+
 def save_minutiae_to_dynamo(table_name: str, image_id: str, array: np.ndarray, metadata: Dict, group_id: Optional[str] = None, ttl_seconds: Optional[int] = None) -> None:
     """Save or update minutiae as compressed binary to DynamoDB.
     

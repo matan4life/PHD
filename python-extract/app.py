@@ -10,8 +10,11 @@ from cv_filter_utils import get_image_skeletons, calculate_minutiae
 from dynamo_utils import save_minutiae_to_dynamo
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler)
 
 s3_client = boto3.client('s3')
 
@@ -46,7 +49,10 @@ def handler(event, context):
             logger.info(f"Processing image={key}, request_id={request_id}")
 
             # Extract GroupId from filename (e.g., 101_1.tif -> GroupId=101)
+            logger.info(f"Extracting GroupId from key={key} for service={service}")
             group_id = key.split('_')[0] if service == "dataset-extract" else None
+            if service == "dataset-extract":
+                logger.info(f"GroupId extracted: {group_id}")
 
             start_time = time.time()
             img = read_file_as_opencv(bucket, key)
