@@ -90,7 +90,7 @@ def handler(event, context):
             }
 
             start_time = time.time()
-            save_minutiae_to_dynamo(table_name, key, minutiae_array, metadata,
+            save_minutiae_to_dynamo(table_name, key, minutiae_array, metadata, group_id,
                                     ttl_seconds if ttl_seconds > 0 else None)
             logger.info(f"Saved to DynamoDB in {time.time() - start_time:.3f}s")
 
