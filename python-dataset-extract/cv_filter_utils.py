@@ -5,7 +5,6 @@ import numpy as np
 from numba import jit
 from typing import List, Tuple
 
-@jit(nopython=True)
 def create_gabor_kernel(ridge_period: np.float64, orientation: np.float64) -> np.ndarray:
     """Create Gabor kernel for ridge enhancement. Optimized with numba."""
     def calculate_kernel_size(period: np.float64) -> tuple[int, int]:
@@ -29,12 +28,10 @@ def create_gabor_kernel(ridge_period: np.float64, orientation: np.float64) -> np
     kernel -= kernel.mean()
     return kernel
 
-@jit(nopython=True)
 def calculate_image_sobel_gradients(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Compute Sobel gradients. Jitted for speedup."""
     return cv2.Sobel(image, cv2.CV_32F, 1, 0), cv2.Sobel(image, cv2.CV_32F, 0, 1)
 
-@jit(nopython=True)
 def create_binary_mask(gx2: np.ndarray, gy2: np.ndarray) -> np.ndarray:
     """Create binary mask from gradients."""
     gm = ne.evaluate("sqrt(gx2 + gy2)")
@@ -50,7 +47,6 @@ def get_crop_indices(mask: np.ndarray) -> tuple[int, int, int, int]:
     column_active = non_zero_points.max(axis=0)
     return row_active[0], column_active[0] + 1, row_active[1], column_active[1] + 1
 
-@jit(nopython=True)
 def get_local_ridge_orientations(gx2: np.ndarray, gy2: np.ndarray, gxy: np.ndarray) -> np.ndarray:
     """Compute local ridge orientations."""
     integral_size = (23, 23)
@@ -61,7 +57,6 @@ def get_local_ridge_orientations(gx2: np.ndarray, gy2: np.ndarray, gxy: np.ndarr
     igm = 2 * igxy
     return (cv2.phase(igd, -igm) + np.pi) / 2
 
-@jit(nopython=True)
 def get_local_ridge_frequency(image: np.ndarray) -> np.float64:
     """Compute local ridge frequency."""
     investigated_region = image[80:160, 80:130]
@@ -73,7 +68,6 @@ def get_local_ridge_frequency(image: np.ndarray) -> np.float64:
     )[0]
     return np.average(local_maximums[1:] - local_maximums[:-1])
 
-@jit(nopython=True)
 def get_enhanced_image(image: np.ndarray, mask: np.ndarray, orientations: np.ndarray, ridge_period: np.float64) -> np.ndarray:
     """Enhance image using Gabor filters."""
     angle_steps = 8
@@ -87,7 +81,6 @@ def get_enhanced_image(image: np.ndarray, mask: np.ndarray, orientations: np.nda
     gabor_filtered_image = negative_gabor_filtered[gabor_filter_orientation_indices, y_coords, x_coords]
     return mask & np.clip(gabor_filtered_image, 0, 255).astype(np.uint8)
 
-@jit(nopython=True)
 def get_image_skeletons(enhanced_image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Get skeletons from enhanced image."""
     _, ridge_lines = cv2.threshold(enhanced_image, 32, 255, cv2.THRESH_BINARY)
@@ -95,6 +88,7 @@ def get_image_skeletons(enhanced_image: np.ndarray) -> tuple[np.ndarray, np.ndar
     binary_skeleton = np.where(skeleton != 0, 1, 0).astype(np.uint8)
     return skeleton, binary_skeleton
 
+@jit(nopython=True)
 def crossing_number_kernel() -> List[List[int]]:
     """Kernel for crossing number."""
     return [[1, 2, 4], [128, 0, 8], [64, 32, 16]]
@@ -109,6 +103,7 @@ def chebyshev_kernel() -> List[np.ndarray]:
     """Chebyshev kernel."""
     return [np.array(to_binary_ints(x))[::-1] for x in range(256)]
 
+@jit(nopython=True)
 def euclidean_kernel() -> List[Tuple[int, int, float]]:
     """Euclidean kernel."""
     sqrt2 = math.sqrt(2)
@@ -141,11 +136,11 @@ def angle_mean(a: float, b: float) -> float:
     """Mean angle."""
     return math.atan2((math.sin(a) + math.sin(b)) / 2, (math.cos(a) + math.cos(b)) / 2)
 
-@jit(nopython=True)
 def calculate_minutiae(mask: np.ndarray, skeleton: np.ndarray, binary_skeleton: np.ndarray) -> List[Tuple[int, int, bool, float]]:
     """Calculate minutiae points with angles. Full implementation with all nested funcs."""
     crossed_number = np.array(crossing_number_kernel())
     chebyshev = chebyshev_kernel()
+    euclidean = euclidean_kernel()
     crossing_numbers = np.array([np.count_nonzero(n < np.roll(n, -1)) for n in chebyshev]).astype(np.uint8)
     chebyshev_filter_applied = cv2.filter2D(binary_skeleton, -1, crossed_number, borderType=cv2.BORDER_CONSTANT)
     crossing_numbers_transformed = cv2.LUT(chebyshev_filter_applied, crossing_numbers)
