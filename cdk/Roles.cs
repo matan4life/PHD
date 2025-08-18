@@ -19,7 +19,7 @@ class Roles
         ExtractRole.AddToPolicy(new PolicyStatement(new PolicyStatementProps
         {
             Effect = Effect.ALLOW,
-            Actions = ["s3:GetObject", "dynamodb:PutItem", "dynamodb:GetItem"],
+            Actions = ["s3:GetObject", "dynamodb:PutItem", "dynamodb:GetItem", "s3:DeleteObject"],
             Resources = ["*"]  // TODO: Replace with specific ARNs for production
         }));
 

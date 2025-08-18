@@ -18,6 +18,8 @@ class ApplicationStack : Stack
         var datasetTable = DynamoDb.CreateDatasetMinutiaeTable(this, props);
         var inputTable = DynamoDb.CreateInputMinutiaeTable(this, props);
 
+        var groupsTable = DynamoDb.CreateDatasetGroupsTable(this, props);
+
         var role = Roles.CreateRole(this, props);
         var asset = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" });
         // Extract Lambda
@@ -35,7 +37,9 @@ class ApplicationStack : Stack
             }),
             Environment = new Dictionary<string, string>
             {
-                { "TABLE_NAME", datasetTable.TableName }
+                { "TABLE_NAME", datasetTable.TableName },
+                { "SERVICE", "dataset-extract" },
+                { "GROUPS_TABLE_NAME", groupsTable.TableName }
             }
         });
         var inputLambda = new DockerImageFunction(this, "InputExtract", new DockerImageFunctionProps
@@ -52,7 +56,9 @@ class ApplicationStack : Stack
             }),
             Environment = new Dictionary<string, string>
             {
-                { "TABLE_NAME", inputTable.TableName }
+                { "TABLE_NAME", inputTable.TableName },
+                { "SERVICE", "input-extract" },
+                { "GROUPS_TABLE_NAME", groupsTable.TableName }
             }
         });
 
@@ -62,8 +68,11 @@ class ApplicationStack : Stack
 
         // Permissions
         datasetTable.GrantReadWriteData(extractLambda);
+        groupsTable.GrantReadWriteData(extractLambda);
         inputTable.GrantReadWriteData(inputLambda);
         datasetBucket.GrantRead(extractLambda);
         inputBucket.GrantRead(inputLambda);
+        datasetBucket.GrantDelete(extractLambda);
+        inputBucket.GrantDelete(inputLambda);
     }
 }

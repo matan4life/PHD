@@ -6,35 +6,58 @@ from typing import Dict, Optional
 
 dynamodb = boto3.resource('dynamodb')
 
-def save_minutiae_to_dynamo(table_name: str, image_id: str, array: np.ndarray, metadata: Dict, ttl_seconds: Optional[int] = None) -> None:
-    """Save minutiae as compressed binary to DynamoDB.
+def save_minutiae_to_dynamo(table_name: str, image_id: str, array: np.ndarray, metadata: Dict, group_id: Optional[str] = None, ttl_seconds: Optional[int] = None) -> None:
+    """Save or update minutiae as compressed binary to DynamoDB.
     
     For publication: Optimized for size (compressed), reusable for dataset (persistent) or query (TTL).
+    Updates existing item if ImageId exists, creates new otherwise.
     
     Args:
         table_name: DynamoDB table name (e.g., DatasetMinutiae, QueryMinutiae).
         image_id: Partition key (image filename).
-        array: np.ndarray [n,4] (X,Y,IsTermination,Theta).
-        metadata: Dict with shifts/offsets.
+        array: np.array [n,4] (X,Y,IsTermination,Theta).
+        metadata: Dict with shifts/offsets/centroid (converted to Decimal for floats).
         ttl_seconds: Expire time for query table (None for persistent).
     """
     buffer = io.BytesIO()
     np.savez_compressed(buffer, data=array)
     buffer.seek(0)
     
+    # Convert float/int to Decimal for DynamoDB
+    converted_metadata = {
+        k: Decimal(str(v)) if isinstance(v, (int, float)) else v
+        for k, v in metadata.items()
+    }
+    
     item = {
         'ImageId': image_id,
-        'MinutiaeBinary': buffer.getvalue(),  # Binary auto-detected
-        'Metadata': metadata,
+        'MinutiaeBinary': buffer.getvalue(),
+        'Metadata': converted_metadata,
         'Timestamp': int(time.time())
     }
+
+    if group_id is not None:
+        item['GroupId'] = group_id
+
     if ttl_seconds:
         item['TTL'] = int(time.time() + ttl_seconds)
     
     try:
-        dynamodb.Table(table_name).put_item(Item=item)
+        table = dynamodb.Table(table_name)
+        table.update_item(
+            Key={'ImageId': image_id},
+            UpdateExpression="SET MinutiaeBinary = :mb, GroupId = :gi, Metadata = :md, #ts = :ts" + (", TTL = :ttl" if ttl_seconds else ""),
+            ExpressionAttributeValues={
+                ':mb': item['MinutiaeBinary'],
+                ':md': item['Metadata'],
+                ':ts': item['Timestamp'],
+                ':gi': item.get('GroupId', None),
+                **({':ttl': item['TTL']} if ttl_seconds else {})
+            },
+            ExpressionAttributeNames={'#ts': 'Timestamp'},
+        )
     except Exception as e:
-        raise RuntimeError(f"Failed to save {image_id} to {table_name}: {str(e)}")
+        raise RuntimeError(f"Failed to save/update {image_id} to {table_name}: {str(e)}")
 
 def load_minutiae_from_dynamo(table_name: str, image_id: str) -> np.ndarray:
     """Load and decompress minutiae. Reuse for comparator."""

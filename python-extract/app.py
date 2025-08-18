@@ -31,6 +31,8 @@ def handler(event, context):
         JSON with per-image results
     """
     table_name = os.environ['TABLE_NAME']
+    service = os.environ['SERVICE']
+    groups_table_name = os.environ.get('GROUPS_TABLE_NAME', 'FingerprintGroups')
     ttl_seconds = int(os.environ.get('TTL_SECONDS', 0))
     request_id = context.aws_request_id
 
@@ -42,6 +44,9 @@ def handler(event, context):
             bucket = record['s3']['bucket']['name']
             key = record['s3']['object']['key']
             logger.info(f"Processing image={key}, request_id={request_id}")
+
+            # Extract GroupId from filename (e.g., 101_1.tif -> GroupId=101)
+            group_id = key.split('_')[0] if service == "dataset-extract" else None
 
             start_time = time.time()
             img = read_file_as_opencv(bucket, key)
@@ -82,6 +87,18 @@ def handler(event, context):
             save_minutiae_to_dynamo(table_name, key, minutiae_array, metadata,
                                     ttl_seconds if ttl_seconds > 0 else None)
             logger.info(f"Saved to DynamoDB in {time.time() - start_time:.3f}s")
+
+            if group_id is not None:
+                # Save GroupId to FingerprintGroups
+                dynamodb.Table(groups_table_name).update_item(
+                    Key={'GroupId': group_id},
+                    UpdateExpression="SET #ts = :ts",
+                    ExpressionAttributeValues={':ts': int(time.time())},
+                    ExpressionAttributeNames={'#ts': 'Timestamp'}
+                )
+
+            s3_client.delete_object(Bucket=bucket, Key=key)
+            logger.info(f"Deleted image={key} from bucket={bucket}")
 
             results.append({'image': key, 'status': 'success', 'count': len(minutiae)})
         except Exception as e:
