@@ -18,7 +18,7 @@ def create_enhanced_version(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     rf = get_local_ridge_frequency(image)
     return get_enhanced_image(image, mask, ro, rf), mask
 
-def get_centroid(minutiae: List[Tuple[int, int, bool, float]]) -> Tuple[float, float]:
+def get_centroid(minutiae):
     """Calculate the center of mass (centroid) for minutiae points.
     
     Reuse: For dataset or query images to define center for comparison.
