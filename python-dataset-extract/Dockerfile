@@ -1,7 +1,7 @@
 FROM public.ecr.aws/lambda/python:3.12
 
 # Install runtime dependencies for opencv-contrib-python-headless
-RUN dnf install -y mesa-libGL mesa-libGL-devel libpng libjpeg-turbo libtiff libwebp libopenjp2 libxcb libxcb-devel libX11 libX11-devel libXrender libXrender-devel libXext libXext-devel libSM libSM-devel glib2 glib2-devel && \
+RUN dnf install -y libglvnd-glx glib2 libSM libXext libXrender libpng libjpeg-turbo libtiff openjpeg2 && \
     dnf clean all && \
     rm -rf /var/cache/dnf
 
