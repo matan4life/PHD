@@ -7,7 +7,7 @@ import time
 from fs_utils import read_file_as_opencv
 from extract_steps import crop_image, create_enhanced_version, get_centroid
 from cv_filter_utils import get_image_skeletons, calculate_minutiae
-from dynamo_utils import save_minutiae_to_dynamo
+from dynamo_utils import save_minutiae_to_dynamo, save_group_to_dynamo
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -96,12 +96,7 @@ def handler(event, context):
 
             if group_id is not None:
                 # Save GroupId to FingerprintGroups
-                dynamodb.Table(groups_table_name).update_item(
-                    Key={'GroupId': group_id},
-                    UpdateExpression="SET #ts = :ts",
-                    ExpressionAttributeValues={':ts': int(time.time())},
-                    ExpressionAttributeNames={'#ts': 'Timestamp'}
-                )
+                save_group_to_dynamo(groups_table_name, group_id)
 
             s3_client.delete_object(Bucket=bucket, Key=key)
             logger.info(f"Deleted image={key} from bucket={bucket}")

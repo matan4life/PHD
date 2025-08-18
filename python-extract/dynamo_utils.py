@@ -54,6 +54,17 @@ def save_minutiae_to_dynamo(table_name: str, image_id: str, array: np.ndarray, m
     except Exception as e:
         raise RuntimeError(f"Failed to save/update {image_id} to {table_name}: {str(e)}")
 
+def save_group_to_dynamo(table_name: str, group_id: Optional[str] = None) -> None:    
+    try:
+        dynamodb.Table(table_name).update_item(
+            Key={'GroupId': group_id},
+            UpdateExpression="SET #ts = :ts",
+            ExpressionAttributeValues={':ts': int(time.time())},
+            ExpressionAttributeNames={'#ts': 'Timestamp'}
+        )
+    except Exception as e:
+        raise RuntimeError(f"Failed to save/update {group_id} to {table_name}: {str(e)}")
+
 def load_minutiae_from_dynamo(table_name: str, image_id: str) -> np.ndarray:
     """Load and decompress minutiae. Reuse for comparator."""
     try:
