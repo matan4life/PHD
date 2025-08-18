@@ -19,10 +19,11 @@ class ApplicationStack : Stack
         var inputTable = DynamoDb.CreateInputMinutiaeTable(this, props);
 
         var role = Roles.CreateRole(this, props);
+        var asset = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" });
         // Extract Lambda
         var extractLambda = new DockerImageFunction(this, "DatasetExtract", new DockerImageFunctionProps
         {
-            Code = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" }),
+            Code = asset,
             MemorySize = 1024,
             Timeout = Duration.Minutes(15),
             Role = role,
@@ -39,7 +40,7 @@ class ApplicationStack : Stack
         });
         var inputLambda = new DockerImageFunction(this, "InputExtract", new DockerImageFunctionProps
         {
-            Code = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" }),
+            Code = asset,
             MemorySize = 1024,
             Timeout = Duration.Minutes(15),
             Role = role,
