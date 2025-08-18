@@ -65,8 +65,13 @@ def handler(event, context):
 
             minutiae_array = np.array([(x + column, y + row, 1 if term else 0, theta)
                                        for x, y, term, theta in minutiae], dtype=np.float32)
-            metadata = {'width_shift': column, 'height_shift': row,
-                        'offset_row': row_offset, 'offset_col': column_offset}
+
+            metadata = {
+                'width_shift': int(column),  # Convert numpy.int64 to int
+                'height_shift': int(row),
+                'offset_row': int(row_offset),
+                'offset_col': int(column_offset)
+            }
 
             start_time = time.time()
             save_minutiae_to_dynamo(table_name, key, minutiae_array, metadata,
