@@ -3,7 +3,6 @@ from numba import jit
 from cv_filter_utils import calculate_image_sobel_gradients, create_binary_mask, get_local_ridge_orientations, \
     get_local_ridge_frequency, get_enhanced_image, get_crop_indices
 
-@jit(nopython=True)
 def crop_image(image: np.ndarray) -> tuple[np.ndarray, int, int, int, int]:
     """Crop fingerprint to active region. Reusable for dataset/input."""
     gx, gy = calculate_image_sobel_gradients(image)
@@ -11,7 +10,6 @@ def crop_image(image: np.ndarray) -> tuple[np.ndarray, int, int, int, int]:
     r1, w1, r2, w2 = get_crop_indices(mask)
     return image[r1:w1, r2:w2], r1, r2, w1, w2
 
-@jit(nopython=True)
 def create_enhanced_version(image: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Enhance image with Gabor filters. Vectorized and jitted for speedup."""
     gx, gy = calculate_image_sobel_gradients(image)

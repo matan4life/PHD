@@ -2,7 +2,6 @@ import math
 import cv2
 import numexpr as ne
 import numpy as np
-from numba import jit
 from typing import List, Tuple
 
 def create_gabor_kernel(ridge_period: np.float64, orientation: np.float64) -> np.ndarray:
@@ -39,7 +38,6 @@ def create_binary_mask(gx2: np.ndarray, gy2: np.ndarray) -> np.ndarray:
     threshold = integral_gm.max() * 0.2
     return cv2.threshold(integral_gm, threshold, 255, cv2.THRESH_BINARY)[1].astype(np.uint8)
 
-@jit(nopython=True)
 def get_crop_indices(mask: np.ndarray) -> tuple[int, int, int, int]:
     """Get crop indices from mask."""
     non_zero_points = np.argwhere(mask)
@@ -88,22 +86,18 @@ def get_image_skeletons(enhanced_image: np.ndarray) -> tuple[np.ndarray, np.ndar
     binary_skeleton = np.where(skeleton != 0, 1, 0).astype(np.uint8)
     return skeleton, binary_skeleton
 
-@jit(nopython=True)
 def crossing_number_kernel() -> List[List[int]]:
     """Kernel for crossing number."""
     return [[1, 2, 4], [128, 0, 8], [64, 32, 16]]
 
-@jit(nopython=True)
 def to_binary_ints(number: int) -> List[int]:
     """Convert number to binary ints."""
     return [int(digit) for digit in f'{number:08b}']
 
-@jit(nopython=True)
 def chebyshev_kernel() -> List[np.ndarray]:
     """Chebyshev kernel."""
     return [np.array(to_binary_ints(x))[::-1] for x in range(256)]
 
-@jit(nopython=True)
 def euclidean_kernel() -> List[Tuple[int, int, float]]:
     """Euclidean kernel."""
     sqrt2 = math.sqrt(2)
@@ -116,7 +110,6 @@ def euclidean_kernel() -> List[Tuple[int, int, float]]:
             (-1, 1, sqrt2),
             (-1, 0, 1)]
 
-@jit(nopython=True)
 def next_ridge_directions(previous_direction: int, directions: np.ndarray) -> List[int]:
     """Get next ridge directions."""
     possible_positions = np.argwhere(directions != 0).ravel().tolist()
@@ -126,12 +119,10 @@ def next_ridge_directions(previous_direction: int, directions: np.ndarray) -> Li
             possible_positions = possible_positions[:-1]
     return possible_positions
 
-@jit(nopython=True)
 def angle_abs_difference(a: float, b: float) -> float:
     """Absolute angle difference."""
     return math.pi - abs(abs(a - b) - math.pi)
 
-@jit(nopython=True)
 def angle_mean(a: float, b: float) -> float:
     """Mean angle."""
     return math.atan2((math.sin(a) + math.sin(b)) / 2, (math.cos(a) + math.cos(b)) / 2)
