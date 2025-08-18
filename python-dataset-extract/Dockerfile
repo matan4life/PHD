@@ -1,4 +1,4 @@
-FROM public.ecr.aws/lambda/python:3.12
+FROM public.ecr.aws/lambda/python:3.11
 
 # Install runtime dependencies for opencv-contrib-python-headless
 RUN dnf install -y libglvnd-glx glib2 libSM libXext libXrender libpng libjpeg-turbo libtiff openjpeg2 && \
