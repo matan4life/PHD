@@ -52,4 +52,15 @@ class DynamoDb
             BillingMode = BillingMode.PAY_PER_REQUEST
         });
     }
+
+    internal static Table CreateInputMinutiaeTable(Construct scope, Props props)
+    {
+        return new Table(scope, props.InputMinutiaeDynamoTableName, new TableProps
+        {
+            PartitionKey = new Attribute { Name = "ImageId", Type = AttributeType.STRING },
+            RemovalPolicy = RemovalPolicy.DESTROY,
+            TableName = props.InputMinutiaeDynamoTableName,
+            BillingMode = BillingMode.PAY_PER_REQUEST
+        });
+    }
 }
