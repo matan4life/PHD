@@ -41,4 +41,4 @@ jobs:
 
       # CDK Deploy
       - name: CDK Deploy
-        run: cd cdk && cdk deploy --all --require-approval never
+        run: cd cdk && cdk bootstrap && cdk deploy --all --require-approval never
