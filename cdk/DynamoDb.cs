@@ -53,13 +53,14 @@ class DynamoDb
         });
     }
 
-    internal static Table CreateInputMinutiaeTable(Construct scope, Props props)
+    internal static Table CreateResultTable(Construct scope, Props props)
     {
-        return new Table(scope, props.InputMinutiaeDynamoTableName, new TableProps
+        return new Table(scope, props.ResultDynamoTableName, new TableProps
         {
             PartitionKey = new Attribute { Name = "ImageId", Type = AttributeType.STRING },
+            SortKey = new Attribute { Name = "GroupId", Type = AttributeType.STRING },
             RemovalPolicy = RemovalPolicy.DESTROY,
-            TableName = props.InputMinutiaeDynamoTableName,
+            TableName = props.ResultDynamoTableName,
             BillingMode = BillingMode.PAY_PER_REQUEST
         });
     }

@@ -19,6 +19,7 @@ class ApplicationStack : Stack
         var inputTable = DynamoDb.CreateInputMinutiaeTable(this, props);
 
         var groupsTable = DynamoDb.CreateDatasetGroupsTable(this, props);
+        var resultTable = DynamoDb.CreateResultTable(this, props);
 
         var role = Roles.CreateRole(this, props);
         var asset = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" });
@@ -61,6 +62,27 @@ class ApplicationStack : Stack
                 { "GROUPS_TABLE_NAME", groupsTable.TableName }
             }
         });
+        var comparatorLambda = new DockerImageFunction(this, "Compare", new DockerImageFunctionProps
+        {
+            Code = DockerImageCode.FromImageAsset("../python-compare", new AssetImageCodeProps { File = "Dockerfile" }),
+            MemorySize = 1024,
+            Timeout = Duration.Minutes(15),
+            Role = role,
+            LogGroup = new LogGroup(this, "CompareLogGroup", new LogGroupProps
+            {
+                LogGroupName = "/aws/lambda/compare",
+                RemovalPolicy = RemovalPolicy.DESTROY,
+                Retention = RetentionDays.ONE_WEEK
+            }),
+            Environment = new Dictionary<string, string>
+            {
+                { "INPUT_TABLE_NAME", inputTable.TableName },
+                { "DATASET_TABLE_NAME", datasetTable.TableName },
+                { "RESULT_TABLE_NAME", resultTable.TableName },
+                { "GROUPS_TABLE_NAME", groupsTable.TableName },
+                { "SERVICE", "compare" }
+            }
+        });
 
         // S3 Event Trigger
         datasetBucket.AddEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(extractLambda));
@@ -74,5 +96,10 @@ class ApplicationStack : Stack
         inputBucket.GrantRead(inputLambda);
         datasetBucket.GrantDelete(extractLambda);
         inputBucket.GrantDelete(inputLambda);
+
+        datasetTable.GrantReadWriteData(comparatorLambda);
+        inputTable.GrantReadWriteData(comparatorLambda);
+        resultTable.GrantReadWriteData(comparatorLambda);
+        groupsTable.GrantReadWriteData(comparatorLambda);
     }
 }
