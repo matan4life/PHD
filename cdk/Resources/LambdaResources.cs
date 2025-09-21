@@ -40,7 +40,6 @@ namespace Cdk.Resources
                     ["SERVICE_TYPE"] = "dataset",
                     ["LOG_LEVEL"] = "INFO"
                 },
-                ReservedConcurrentExecutions = 10,
                 FunctionName = $"{config.ProjectName}-dataset-extractor"
             });
 
@@ -65,7 +64,6 @@ namespace Cdk.Resources
                     ["TTL_HOURS"] = "24",
                     ["LOG_LEVEL"] = "INFO"
                 },
-                ReservedConcurrentExecutions = 5,
                 FunctionName = $"{config.ProjectName}-input-extractor"
             });
 
