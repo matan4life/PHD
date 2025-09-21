@@ -23,7 +23,6 @@ def lambda_handler(event, context):
     Processes probe insertion, compares against all groups, aggregates scores,
     evaluates thresholds, writes "YES"/"NO" to ResultsTable, and deletes probe.
     """
-    start_time = time.time()
     logger.info(f"Lambda handler started. Request ID: {context.aws_request_id}")
     logger.info(f"Event contains {len(event.get('Records', []))} records")
 
@@ -37,7 +36,6 @@ def lambda_handler(event, context):
 
     try:
         for record_idx, record in enumerate(event['Records']):
-            record_start_time = time.time()
             logger.info(f"Processing record {record_idx + 1}/{len(event['Records'])}")
             if record['eventName'] != 'INSERT':
                 logger.info(f"Skipping record {record_idx + 1}: eventName = {record['eventName']}")
