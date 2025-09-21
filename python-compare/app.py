@@ -25,7 +25,7 @@ def lambda_handler(event, context):
     """
     start_time = time.time()
     logger.info(f"Lambda handler started. Request ID: {context.aws_request_id}")
-    logger.info(f"Event contains {len(event.get('Records', []))} r
+    logger.info(f"Event contains {len(event.get('Records', []))} records")
 
     dynamodb = boto3.resource('dynamodb')
     minutiae_table = os.environ['INPUT_TABLE_NAME']
