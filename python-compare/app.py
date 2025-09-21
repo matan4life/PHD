@@ -1,5 +1,6 @@
 import json
 import os
+import base64
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -8,6 +9,12 @@ from minutia_types import MINUTIA_DTYPE_BASE, assign_unique_ids
 from minutia_comparison import compare_images
 from score_aggregation import aggregate_group_scores, evaluate_thresholds
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler)
 
 def lambda_handler(event, context):
     """
@@ -16,29 +23,53 @@ def lambda_handler(event, context):
     Processes probe insertion, compares against all groups, aggregates scores,
     evaluates thresholds, writes "YES"/"NO" to ResultsTable, and deletes probe.
     """
+    start_time = time.time()
+    logger.info(f"Lambda handler started. Request ID: {context.aws_request_id}")
+    logger.info(f"Event contains {len(event.get('Records', []))} r
+
     dynamodb = boto3.resource('dynamodb')
     minutiae_table = os.environ['INPUT_TABLE_NAME']
     dataset_table = os.environ['DATASET_TABLE_NAME']
     group_table = os.environ['GROUP_TABLE_NAME']
     results_table = os.environ['RESULT_TABLE_NAME']
 
+    logger.info(f"Connected to tables: {os.environ['INPUT_TABLE_NAME']}, {os.environ['RESULT_TABLE_NAME']}")
+
     try:
-        for record in event['Records']:
+        for record_idx, record in enumerate(event['Records']):
+            record_start_time = time.time()
+            logger.info(f"Processing record {record_idx + 1}/{len(event['Records'])}")
             if record['eventName'] != 'INSERT':
+                logger.info(f"Skipping record {record_idx + 1}: eventName = {record['eventName']}")
                 continue
             new_image = record['dynamodb']['NewImage']
             probe_image_id = new_image['ImageId']['S']
-            probe_binary = new_image['MinutiaeBinary']['B']
+
+            logger.info(f"Processing probe image: {probe_image_id}")
+
+            probe_binary_b64 = new_image['MinutiaeBinary']['B']
+            probe_binary = base64.b64decode(probe_binary_b64)
+
+            logger.info(f"Decoded probe binary data: {len(probe_binary)} bytes")
+
             metadata = new_image['Metadata']['M']
             probe_center = (int(metadata['center_x']['N']), int(metadata['center_y']['N']))
+
+            logger.info(f"Probe center coordinates: {probe_center}")
+
             probe_minutiae = np.frombuffer(probe_binary, dtype=MINUTIA_DTYPE_BASE)
+
+            logger.info(f"Created probe minutiae array: {len(probe_minutiae)} minutiae")
 
             # Assign IDs to probe
             probe_minutiae, current_id = assign_unique_ids(probe_minutiae, 0)
+            logger.info(f"Assigned IDs to probe minutiae. Next ID: {current_id}")
 
             # Initialize global caches (by ImageId)
             global_dist_cache = {}
             global_angle_cache = {}
+            logger.info("Initialized global caches")
+            logger.info("Starting scan for unique group IDs")
 
             # Scan unique group IDs (optimize with GSI if available)
             scan_response = minutiae_table.scan(ProjectionExpression='GroupId')
@@ -57,6 +88,7 @@ def lambda_handler(event, context):
                                                           ExclusiveStartKey=query_response['LastEvaluatedKey'])
                     galleries.extend(query_response['Items'])
 
+                logger.info(f"Found {len(group_ids)} unique groups")
                 group_scores = []
                 group_size = 0
                 for gallery in galleries:
