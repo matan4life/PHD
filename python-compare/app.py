@@ -124,7 +124,15 @@ def lambda_handler(event, context):
             minutiae_table.delete_item(Key={'ImageId': probe_image_id})
 
     except Exception as e:
-        print(f"Error processing event: {str(e)}")
-        return {'statusCode': 500, 'body': f"Error: {str(e)}"}
+        error_details = {
+            'error': str(e),
+            'type': type(e).__name__,
+            'traceback': traceback.format_exc(),
+            'probe_image_id': probe_image_id if 'probe_image_id' in locals() else 'unknown',
+            'request_id': context.aws_request_id,
+            'execution_time': time.time() - start_time
+        }
+        logger.error(f"Critical error in lambda handler: {json.dumps(error_details, indent=2)}")
+        return {'statusCode': 500, 'body': json.dumps(error_details)}
 
     return {'statusCode': 200}
