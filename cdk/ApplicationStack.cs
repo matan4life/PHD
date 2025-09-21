@@ -80,7 +80,7 @@ class ApplicationStack : Stack
                 { "INPUT_TABLE_NAME", inputTable.TableName },
                 { "DATASET_TABLE_NAME", datasetTable.TableName },
                 { "RESULT_TABLE_NAME", resultTable.TableName },
-                { "GROUPS_TABLE_NAME", groupsTable.TableName },
+                { "GROUP_TABLE_NAME", groupsTable.TableName },
                 { "SERVICE", "compare" }
             }
         });

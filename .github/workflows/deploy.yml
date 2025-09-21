@@ -38,7 +38,22 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::987277324222:role/github-actions-workflow-runner 
           aws-region: eu-central-1
+      
+      - name: Check CDK Bootstrap status
+        id: check-bootstrap
+        continue-on-error: true
+        run: |
+          if aws cloudformation describe-stacks --stack-name CDKToolkit >/dev/null 2>&1; then
+            echo "CDKToolkit stack exists, no bootstrap needed"
+            echo "BOOTSTRAPPED=true" >> $GITHUB_ENV
+          else
+            echo "CDKToolkit stack not found, bootstrap required"
+            echo "BOOTSTRAPPED=false" >> $GITHUB_ENV
+          fi
 
-      # CDK Deploy
-      - name: CDK Deploy
-        run: cd cdk && cdk bootstrap && cdk deploy --all --require-approval never
+      - name: Bootstrap CDK
+        if: env.BOOTSTRAPPED == 'false'
+        run: cd cdk && cdk bootstrap
+
+      - name: Deploy CDK stack
+        run: cd cdk && cdk deploy --all --require-approval never
