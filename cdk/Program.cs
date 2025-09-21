@@ -3,5 +3,5 @@ using Amazon.CDK;
 using Cdk;
 
 var app = new App();
-new ApplicationStack(app, new Props());
+new ApplicationStack(app, "fingerprint-backend-stack");
 app.Synth();

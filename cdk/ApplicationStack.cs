@@ -1,116 +1,129 @@
 ﻿using Amazon.CDK;
-using Amazon.CDK.AWS.Lambda;
-using Amazon.CDK.AWS.Lambda.EventSources;
-using Amazon.CDK.AWS.Logs;
-using Amazon.CDK.AWS.S3;
-using Amazon.CDK.AWS.S3.Notifications;
+using Cdk.Configuration;
+using Cdk.Resources;
 using Constructs;
 
 namespace Cdk;
 
 class ApplicationStack : Stack
 {
-    internal ApplicationStack(Construct scope, Props props) : base(scope, props.ApplicationStackName, default)
+    public ApplicationStack(Construct scope, string id, IStackProps? props = null) : base(scope, id, props)
     {
-        var datasetBucket = S3.CreateDatasetBucket(this, props);
-        var inputBucket = S3.CreateInputBucket(this, props);
+        var config = new InfrastructureConfig();
 
-        // DynamoDB Table for Dataset Minutiae
-        var datasetTable = DynamoDb.CreateDatasetMinutiaeTable(this, props);
-        var inputTable = DynamoDb.CreateInputMinutiaeTable(this, props);
+        var vpcInfra = VpcResources.CreateVpcInfrastructure(this, config);
+        var s3Infra = S3Resources.CreateS3Infrastructure(this, config);
+        var dynamoInfra = DynamoDBResources.CreateDynamoDBInfrastructure(this, config);
+        var cacheInfra = CacheResources.CreateCacheInfrastructure(this, config, vpcInfra);
+        var lambdaInfra = LambdaResources.CreateLambdaInfrastructure(this, config, s3Infra, dynamoInfra);
+        S3Resources.SetupS3EventTriggers(s3Infra, lambdaInfra);
+        CreateStackOutputs(config, s3Infra, dynamoInfra, vpcInfra, cacheInfra, lambdaInfra);
+    }
 
-        var groupsTable = DynamoDb.CreateDatasetGroupsTable(this, props);
-        var resultTable = DynamoDb.CreateResultTable(this, props);
-
-        var role = Roles.CreateRole(this, props);
-        var asset = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps { File = "Dockerfile" });
-        // Extract Lambda
-        var extractLambda = new DockerImageFunction(this, "DatasetExtract", new DockerImageFunctionProps
+    private void CreateStackOutputs(InfrastructureConfig config, S3Infrastructure s3Infra,
+        DynamoDBInfrastructure dynamoInfra, VpcInfrastructure vpcInfra, CacheInfrastructure cacheInfra,
+        LambdaInfrastructure lambdaInfra)
+    {
+        new CfnOutput(this, "DatasetBucketName", new CfnOutputProps
         {
-            Code = asset,
-            MemorySize = 1024,
-            Timeout = Duration.Minutes(15),
-            Role = role,
-            LogGroup = new LogGroup(this, "DatasetExtractLogGroup", new LogGroupProps
-            {
-                LogGroupName = "/aws/lambda/dataset-extract",
-                RemovalPolicy = RemovalPolicy.DESTROY,
-                Retention = RetentionDays.ONE_WEEK
-            }),
-            Environment = new Dictionary<string, string>
-            {
-                { "TABLE_NAME", datasetTable.TableName },
-                { "SERVICE", "dataset-extract" },
-                { "GROUPS_TABLE_NAME", groupsTable.TableName }
-            }
-        });
-        var inputLambda = new DockerImageFunction(this, "InputExtract", new DockerImageFunctionProps
-        {
-            Code = asset,
-            MemorySize = 1024,
-            Timeout = Duration.Minutes(15),
-            Role = role,
-            LogGroup = new LogGroup(this, "InputExtractLogGroup", new LogGroupProps
-            {
-                LogGroupName = "/aws/lambda/input-extract",
-                RemovalPolicy = RemovalPolicy.DESTROY,
-                Retention = RetentionDays.ONE_WEEK
-            }),
-            Environment = new Dictionary<string, string>
-            {
-                { "TABLE_NAME", inputTable.TableName },
-                { "SERVICE", "input-extract" },
-                { "GROUPS_TABLE_NAME", groupsTable.TableName }
-            }
-        });
-        var comparatorLambda = new DockerImageFunction(this, "Compare", new DockerImageFunctionProps
-        {
-            Code = DockerImageCode.FromImageAsset("../python-compare", new AssetImageCodeProps { File = "Dockerfile" }),
-            MemorySize = 1024,
-            Timeout = Duration.Minutes(15),
-            Role = role,
-            LogGroup = new LogGroup(this, "CompareLogGroup", new LogGroupProps
-            {
-                LogGroupName = "/aws/lambda/compare",
-                RemovalPolicy = RemovalPolicy.DESTROY,
-                Retention = RetentionDays.ONE_WEEK
-            }),
-            Environment = new Dictionary<string, string>
-            {
-                { "INPUT_TABLE_NAME", inputTable.TableName },
-                { "DATASET_TABLE_NAME", datasetTable.TableName },
-                { "RESULT_TABLE_NAME", resultTable.TableName },
-                { "GROUP_TABLE_NAME", groupsTable.TableName },
-                { "SERVICE", "compare" }
-            }
+            Value = s3Infra.DatasetBucket.BucketName,
+            Description = "S3 bucket for dataset fingerprint images"
         });
 
-        comparatorLambda.AddEventSource(new DynamoEventSource(inputTable, new DynamoEventSourceProps
+        new CfnOutput(this, "InputBucketName", new CfnOutputProps
         {
-            StartingPosition = StartingPosition.LATEST,
-            BatchSize = 10,
-            Enabled = true,
-            RetryAttempts = 3,
-            MaxBatchingWindow = Duration.Seconds(5)
-        }));
+            Value = s3Infra.InputBucket.BucketName,
+            Description = "S3 bucket for input fingerprint images"
+        });
 
-        // S3 Event Trigger
-        datasetBucket.AddEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(extractLambda));
-        inputBucket.AddEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(inputLambda));
+        new CfnOutput(this, "SharedVpcId", new CfnOutputProps
+        {
+            Value = vpcInfra.Vpc.VpcId,
+            Description = "VPC ID for comparator Lambda (future stage)"
+        });
 
-        // Permissions
-        datasetTable.GrantReadWriteData(extractLambda);
-        groupsTable.GrantReadWriteData(extractLambda);
-        inputTable.GrantReadWriteData(inputLambda);
-        datasetBucket.GrantRead(extractLambda);
-        inputBucket.GrantRead(inputLambda);
-        datasetBucket.GrantDelete(extractLambda);
-        inputBucket.GrantDelete(inputLambda);
+        new CfnOutput(this, "VpcCidr", new CfnOutputProps
+        {
+            Value = vpcInfra.Vpc.VpcCidrBlock,
+            Description = "VPC CIDR block"
+        });
 
-        datasetTable.GrantReadWriteData(comparatorLambda);
-        inputTable.GrantReadWriteData(comparatorLambda);
-        inputTable.GrantStreamRead(comparatorLambda);
-        resultTable.GrantReadWriteData(comparatorLambda);
-        groupsTable.GrantReadWriteData(comparatorLambda);
+        new CfnOutput(this, "PrivateSubnetIds", new CfnOutputProps
+        {
+            Value = string.Join(",", vpcInfra.PrivateSubnets.Select(s => s.SubnetId)),
+            Description = "Private subnet IDs for comparator Lambda"
+        });
+
+        new CfnOutput(this, "CacheSecurityGroupId", new CfnOutputProps
+        {
+            Value = vpcInfra.CacheSecurityGroup.SecurityGroupId,
+            Description = "Security Group ID for Redis access"
+        });
+
+        new CfnOutput(this, "RedisEndpoint", new CfnOutputProps
+        {
+            Value = cacheInfra.RedisCluster.AttrRedisEndpointAddress,
+            Description = "Redis cache endpoint for metrics caching in comparator"
+        });
+
+        new CfnOutput(this, "RedisPort", new CfnOutputProps
+        {
+            Value = "6379",
+            Description = "Redis port"
+        });
+
+        new CfnOutput(this, "DatasetTableName", new CfnOutputProps
+        {
+            Value = dynamoInfra.DatasetMinutiaeTable.TableName,
+            Description = "DynamoDB table for dataset minutiae"
+        });
+
+        new CfnOutput(this, "InputTableName", new CfnOutputProps
+        {
+            Value = dynamoInfra.InputMinutiaeTable.TableName,
+            Description = "DynamoDB table for input minutiae (with stream for comparator)"
+        });
+
+        new CfnOutput(this, "InputTableStreamArn", new CfnOutputProps
+        {
+            Value = dynamoInfra.InputMinutiaeTable.TableStreamArn ?? "No stream configured",
+            Description = "DynamoDB stream ARN for comparator trigger"
+        });
+
+        new CfnOutput(this, "ResultsTableName", new CfnOutputProps
+        {
+            Value = dynamoInfra.ResultsTable.TableName,
+            Description = "DynamoDB table for comparison results"
+        });
+
+        new CfnOutput(this, "DatasetExtractorName", new CfnOutputProps
+        {
+            Value = lambdaInfra.DatasetExtractor.FunctionName,
+            Description = "Dataset extractor Lambda function name"
+        });
+
+        new CfnOutput(this, "InputExtractorName", new CfnOutputProps
+        {
+            Value = lambdaInfra.InputExtractor.FunctionName,
+            Description = "Input extractor Lambda function name"
+        });
+
+        new CfnOutput(this, "CloudWatchLogsDatasetExtract", new CfnOutputProps
+        {
+            Value = $"https://console.aws.amazon.com/cloudwatch/home?region={this.Region}#logsV2:log-groups/log-group/%2Faws%2Flambda%2Fdataset-extract",
+            Description = "CloudWatch Logs for Dataset Extractor"
+        });
+
+        new CfnOutput(this, "CloudWatchLogsInputExtract", new CfnOutputProps
+        {
+            Value = $"https://console.aws.amazon.com/cloudwatch/home?region={this.Region}#logsV2:log-groups/log-group/%2Faws%2Flambda%2Finput-extract",
+            Description = "CloudWatch Logs for Input Extractor"
+        });
+
+        new CfnOutput(this, "ReadyForComparator", new CfnOutputProps
+        {
+            Value = "VPC, ElastiCache, and DynamoDB stream ready for comparator Lambda deployment",
+            Description = "Infrastructure ready for stage 2 (comparator)"
+        });
     }
 }
