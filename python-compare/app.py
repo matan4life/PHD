@@ -132,8 +132,7 @@ def lambda_handler(event, context):
             'type': type(e).__name__,
             'traceback': traceback.format_exc(),
             'probe_image_id': probe_image_id if 'probe_image_id' in locals() else 'unknown',
-            'request_id': context.aws_request_id,
-            'execution_time': time.time() - start_time
+            'request_id': context.aws_request_id
         }
         logger.error(f"Critical error in lambda handler: {json.dumps(error_details, indent=2)}")
         return {'statusCode': 500, 'body': json.dumps(error_details)}
