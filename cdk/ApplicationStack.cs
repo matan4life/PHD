@@ -1,5 +1,6 @@
 ﻿using Amazon.CDK;
 using Amazon.CDK.AWS.Lambda;
+using Amazon.CDK.AWS.Lambda.EventSources;
 using Amazon.CDK.AWS.Logs;
 using Amazon.CDK.AWS.S3;
 using Amazon.CDK.AWS.S3.Notifications;
@@ -84,6 +85,15 @@ class ApplicationStack : Stack
             }
         });
 
+        comparatorLambda.AddEventSource(new DynamoEventSource(inputTable, new DynamoEventSourceProps
+        {
+            StartingPosition = StartingPosition.LATEST,
+            BatchSize = 10,
+            Enabled = true,
+            RetryAttempts = 3,
+            MaxBatchingWindow = Duration.Seconds(5)
+        }));
+
         // S3 Event Trigger
         datasetBucket.AddEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(extractLambda));
         inputBucket.AddEventNotification(EventType.OBJECT_CREATED, new LambdaDestination(inputLambda));
@@ -99,6 +109,7 @@ class ApplicationStack : Stack
 
         datasetTable.GrantReadWriteData(comparatorLambda);
         inputTable.GrantReadWriteData(comparatorLambda);
+        inputTable.GrantStreamRead(comparatorLambda);
         resultTable.GrantReadWriteData(comparatorLambda);
         groupsTable.GrantReadWriteData(comparatorLambda);
     }

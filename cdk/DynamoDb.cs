@@ -38,7 +38,8 @@ class DynamoDb
             PartitionKey = new Attribute { Name = "ImageId", Type = AttributeType.STRING },
             RemovalPolicy = RemovalPolicy.DESTROY,
             TableName = props.InputMinutiaeDynamoTableName,
-            BillingMode = BillingMode.PAY_PER_REQUEST
+            BillingMode = BillingMode.PAY_PER_REQUEST,
+            Stream = StreamViewType.NEW_AND_OLD_IMAGES
         });
     }
 
