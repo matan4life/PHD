@@ -15,7 +15,7 @@ namespace Cdk.Resources
         {
             var extractorRole = CreateExtractorRole(scope, config, s3Infra, dynamoInfra);
 
-            var extractorCode = DockerImageCode.FromImageAsset("../fingerprint-extractor", new AssetImageCodeProps
+            var extractorCode = DockerImageCode.FromImageAsset("../python-extract", new AssetImageCodeProps
             {
                 File = "Dockerfile"
             });
