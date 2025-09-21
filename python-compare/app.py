@@ -1,7 +1,7 @@
 import json
 import os
 import base64
-
+import logging
 import boto3
 from boto3.dynamodb.conditions import Key
 import numpy as np
