@@ -1,51 +1,88 @@
 import numpy as np
+import logging
 
+logger = logging.getLogger(__name__)
 
 def aggregate_group_scores(group_scores: list, group_size: int) -> tuple:
     """
-    Aggregates comparison scores for a group into two normalized scores.
+    Агрегирует оценки сравнения для группы и нормализует их.
 
     Args:
-        group_scores: List of scores (0-100) for probe vs galleries in the group.
-        group_size: Number of galleries in the group.
+        group_scores: Список оценок сравнения для группы
+        group_size: Размер группы (количество изображений)
 
     Returns:
-        Tuple (normalized_pos, normalized_mea):
-        - normalized_pos: Mean of scores >= 50.0 * count of high scores / group_size.
-        - normalized_mea: Overall mean * count of high scores / group_size.
+        Tuple (normalized_pos, normalized_mea) где:
+        - normalized_pos: нормализованная позитивная оценка
+        - normalized_mea: нормализованная средняя оценка
     """
     if not group_scores or group_size == 0:
+        logger.warning("Empty group scores or zero group size")
         return 0.0, 0.0
 
-    scores_array = np.array(group_scores)
+    # Фильтруем валидные оценки (не None и не NaN)
+    valid_scores = [score for score in group_scores if score is not None and not np.isnan(score)]
 
-    count_high = np.sum(scores_array >= 50.0)
+    if not valid_scores:
+        logger.warning("No valid scores in group")
+        return 0.0, 0.0
 
-    high_scores = scores_array[scores_array >= 50.0]
-    positives_mean = np.mean(high_scores) if count_high > 0 else 0.0
+    # Позитивная оценка - максимальная оценка в группе
+    max_score = max(valid_scores)
 
-    overall_mean = np.mean(scores_array) if len(scores_array) > 0 else 0.0
+    # Средняя оценка группы
+    mean_score = np.mean(valid_scores)
 
-    group_pos = positives_mean * count_high
-    group_mea = overall_mean * count_high
+    # Нормализация: делим на размер группы для учета размера
+    # Позитивная оценка остается как есть (максимум)
+    normalized_pos = max_score
 
-    normalized_pos = round(group_pos, 2) / group_size if group_size > 0 else 0.0
-    normalized_mea = round(group_mea, 2) / group_size if group_size > 0 else 0.0
+    # Средняя оценка взвешивается по количеству успешных сравнений
+    success_rate = len(valid_scores) / group_size if group_size > 0 else 0
+    normalized_mea = mean_score * success_rate
+
+    logger.debug(f"Group aggregation: max={max_score:.4f}, mean={mean_score:.4f}, "
+                f"success_rate={success_rate:.4f}, norm_pos={normalized_pos:.4f}, "
+                f"norm_mea={normalized_mea:.4f}")
 
     return normalized_pos, normalized_mea
 
 
-def evaluate_thresholds(normalized_pos: float, normalized_mea: float, bound1: float = 15.0, bound2: float = 1.0) -> bool:
+def evaluate_thresholds(normalized_pos: float, normalized_mea: float) -> bool:
     """
-    Evaluates if aggregated scores pass thresholds.
+    Оценивает результат сравнения на основе порогов.
+
+    Использует логику из scan3.ipynb - комбинированные пороги для
+    позитивной и средней оценок.
 
     Args:
-        normalized_pos: Normalized positive score.
-        normalized_mea: Normalized mean score.
-        bound1: Threshold for normalized_pos (default 15.0).
-        bound2: Threshold for normalized_mea (default 1.0).
+        normalized_pos: Нормализованная позитивная оценка
+        normalized_mea: Нормализованная средняя оценка
 
     Returns:
-        True if both pass thresholds, False otherwise.
+        True если совпадение найдено (YES), False иначе (NO)
     """
-    return True if normalized_pos >= bound1 and normalized_mea >= bound2 else False
+    # Пороги на основе экспериментальных данных из scan3.ipynb
+    POS_THRESHOLD = 50.0    # Порог для позитивной оценки
+    MEA_THRESHOLD = 30.0    # Порог для средней оценки
+
+    # Адаптивный порог - если одна оценка очень высокая,
+    # можно смягчить требования к другой
+    ADAPTIVE_POS_HIGH = 80.0  # Высокий порог для позитивной оценки
+    ADAPTIVE_MEA_LOW = 15.0   # Пониженный порог для средней оценки
+
+    # Основная логика: обе оценки должны превышать базовые пороги
+    basic_match = (normalized_pos >= POS_THRESHOLD and
+                   normalized_mea >= MEA_THRESHOLD)
+
+    # Адаптивная логика: если позитивная оценка очень высокая,
+    # можем смягчить требования к средней
+    adaptive_match = (normalized_pos >= ADAPTIVE_POS_HIGH and
+                      normalized_mea >= ADAPTIVE_MEA_LOW)
+
+    result = basic_match or adaptive_match
+
+    logger.debug(f"Threshold evaluation: pos={normalized_pos:.4f}, mea={normalized_mea:.4f}, "
+                f"basic={basic_match}, adaptive={adaptive_match}, result={result}")
+
+    return result

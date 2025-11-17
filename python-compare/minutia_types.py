@@ -1,35 +1,42 @@
 import numpy as np
 
-# Define base dtype for minutiae from DynamoDB (int32 for coordinates)
+# Базовый тип данных для минуций (как в экстракторе)
 MINUTIA_DTYPE_BASE = np.dtype([
-    ('x', np.int32),
-    ('y', np.int32),
-    ('is_termination', bool),
-    ('theta', np.float64)
+    ('x', np.float32),
+    ('y', np.float32),
+    ('theta', np.float32),
+    ('quality', np.float32),
+    ('type', np.int32)
 ])
 
-# Extended dtype with unique IDs
+# Расширенный тип с уникальным ID для сравнения
 MINUTIA_DTYPE = np.dtype(MINUTIA_DTYPE_BASE.descr + [('id', np.int32)])
 
 
 def assign_unique_ids(minutiae: np.ndarray, start_id: int = 0) -> tuple:
     """
-    Assigns or shifts unique IDs to minutiae, returns array and next start_id.
+    Присваивает уникальные ID минуциям для процесса сравнения.
 
     Args:
-        minutiae: NumPy array of minutiae.
-        start_id: Starting ID for assignment.
+        minutiae: Массив минуций с базовым типом данных
+        start_id: Начальный ID для присвоения
 
     Returns:
-        Tuple (minutiae with IDs, next_start_id).
+        Tuple (extended_minutiae, next_id) где:
+        - extended_minutiae: массив с добавленными ID
+        - next_id: следующий свободный ID
     """
-    if 'id' in minutiae.dtype.names:
-        minutiae['id'] += start_id
-    else:
-        extended = np.zeros(len(minutiae), dtype=MINUTIA_DTYPE)
-        for field in MINUTIA_DTYPE_BASE.names:
-            extended[field] = minutiae[field]
-        extended['id'] = np.arange(start_id, start_id + len(minutiae))
-        minutiae = extended
-    next_start_id = start_id + len(minutiae)
-    return minutiae, next_start_id
+    if len(minutiae) == 0:
+        return np.array([], dtype=MINUTIA_DTYPE), start_id
+
+    # Создаем новый массив с расширенным типом данных
+    extended = np.zeros(len(minutiae), dtype=MINUTIA_DTYPE)
+
+    # Копируем все поля из исходного массива
+    for field in MINUTIA_DTYPE_BASE.names:
+        extended[field] = minutiae[field]
+
+    # Присваиваем уникальные ID
+    extended['id'] = np.arange(start_id, start_id + len(minutiae), dtype=np.int32)
+
+    return extended, start_id + len(minutiae)

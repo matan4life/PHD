@@ -13,11 +13,11 @@ from extract_steps import crop_image, create_enhanced_version, get_centroid, shi
 from cv_filter_utils import get_image_skeletons, calculate_minutiae
 from dynamo_utils import save_minutiae_to_dynamo, save_group_to_dynamo
 
-logging.basicConfig(
-    level=os.getenv('LOG_LEVEL', 'INFO'),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
-)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+logger.addHandler(handler)
 
 
 class ProcessingMetrics(NamedTuple):

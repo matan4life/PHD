@@ -1,0 +1,50 @@
+version: "3.9"
+services:
+  image_database:
+    init: true
+    build:
+      context: ./Fingerprint.SqlServer
+      dockerfile: Dockerfile
+    ports:
+      - "1433:1433"
+  flask_server:
+    init: true
+    build:
+      context: ./Fingerprint.Python
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_PORT=1433
+      - DATABASE_PASSWORD=abcDEF123#
+      - PORT_APP=3000
+      - THREADS=with
+      - FLASK_INPUT=/flask_input
+      - FLASK_ENHANCED_OUTPUT=/flask_enhanced_output
+      - FLASK_SKELETON_OUTPUT=/flask_skeleton_output
+    ports:
+      - "3000:3000"
+    depends_on:
+      - image_database
+    volumes:
+      - "E:/PHD/Fingerprint.Refactored/fs/flask_input:/flask_input"
+      - "E:/PHD/Fingerprint.Refactored/fs/flask_enhanced_output:/flask_enhanced_output"
+      - "E:/PHD/Fingerprint.Refactored/fs/flask_skeleton_output:/flask_skeleton_output"
+  api:
+    init: true
+    build:
+      context: ./Fingerprint.Dotnet
+      dockerfile: ./Api/Dockerfile
+    environment:
+      - ASPNETCORE_URLS=http://+:5000
+      - ASPNETCORE_ENVIRONMENT=Development
+      - FLASK_INPUT=/flask_input
+      - FLASK_ENHANCED_OUTPUT=/flask_enhanced_output
+      - FLASK_SKELETON_OUTPUT=/flask_skeleton_output
+    ports:
+      - "5000:5000"
+    depends_on:
+      - image_database
+    volumes:
+      - "E:/PHD/Fingerprint.Refactored/fs/flask_input:/flask_input"
+      - "E:/PHD/Fingerprint.Refactored/fs/flask_enhanced_output:/flask_enhanced_output"
+      - "E:/PHD/Fingerprint.Refactored/fs/flask_skeleton_output:/flask_skeleton_output"
+      - "E:/PHD/Fingerprint.Refactored/fs/datasets:/datasets"
