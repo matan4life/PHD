@@ -1,0 +1,6 @@
+{
+  "app": "dotnet run --project Cdk.csproj",
+  "context": {
+    "githubRepo": "matan4life/PHD"
+  }
+}

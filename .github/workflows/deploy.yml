@@ -1,0 +1,59 @@
+name: Deploy Dataset Extract
+on:
+  push:
+    branches:
+      - main
+      - article/15.08  # Your branch
+  pull_request:
+    branches:
+      - main
+      - article/15.08
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup .NET
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+
+      - name: Install AWS CDK CLI
+        run: npm install -g aws-cdk
+
+      # Configure AWS credentials via OIDC
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::987277324222:role/github-actions-workflow-runner 
+          aws-region: eu-central-1
+      
+      - name: Check CDK Bootstrap status
+        id: check-bootstrap
+        continue-on-error: true
+        run: |
+          if aws cloudformation describe-stacks --stack-name CDKToolkit >/dev/null 2>&1; then
+            echo "CDKToolkit stack exists, no bootstrap needed"
+            echo "BOOTSTRAPPED=true" >> $GITHUB_ENV
+          else
+            echo "CDKToolkit stack not found, bootstrap required"
+            echo "BOOTSTRAPPED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Bootstrap CDK
+        if: env.BOOTSTRAPPED == 'false'
+        run: cd cdk && cdk bootstrap
+
+      - name: Deploy CDK stack
+        run: cd cdk && cdk deploy --all --require-approval never

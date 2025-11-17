@@ -1,0 +1,5 @@
+@Telemtry.Api_HostAddress = http://localhost:5098
+
+GET {{Telemtry.Api_HostAddress}}/sessions/101_1.tif_101_2.tif/3d150ce4-f6cf-463c-8e6a-4698d667c56f/8c8580d2-ea3d-4845-b34b-c0c3ea06cce1/11/0
+Accept: application/json
+###
